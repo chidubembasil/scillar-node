@@ -41,8 +41,16 @@ primus.on('connection', (spark) => {
 
     spark.on('end', () => console.log('Client disconnected'));
 });
+
+const mongoUser = "okoro9115_db_user";
+const mongoPass = "xihim7jikYx55APu";
+const mongoPassEncoded = encodeURIComponent(mongoPass); // encode special chars
+const dbName = "scillar"; 
+
+const mongoUri = `mongodb+srv://${mongoUser}:${mongoPassEncoded}@scillar.2y1ablb.mongodb.net/${dbName}?retryWrites=true&w=majority`;
+
 // MongoDB connection
-mongoose.connect('mongodb://127.0.0.1:27017/tripp')
+mongoose.connect(mongoUri)
     .then(() => {
         console.log('Mongodb connected')
     })
