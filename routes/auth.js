@@ -3,44 +3,70 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const User = require('../models/auth');
 
-router.post('/', (req, res) => {
-    const { email, password, name } = req.body;
+// AUTH ROUTE (Login + Register in one endpoint)
+router.post('/', async (req, res) => {
+    try {
+        const { email, password, name } = req.body;
 
+        if (!email || !password) {
+            return res.status(400).json({
+                success: false,
+                message: "Email and password are required"
+            });
+        }
 
-    User.findOne({ email })
-        .then(user => {
-            if (!user) {
+        // FIND USER
+        let user = await User.findOne({ email });
 
-                User.create({ name, email, password })
-                    .then(newUser => res.status(201).json({
-                        success: true,
-                        message: 'User created',
-                        user: { name: newUser.name, email: newUser.email }
-                    }))
-                    .catch(err => res.status(400).json({ success: false, message: err.message }));
-            } else {
+        // REGISTER (IF USER DOESN’T EXIST)
+        if (!user) {
+            const hashedPassword = await bcrypt.hash(password, 10);
 
-                bcrypt.compare(password, user.password, (err, isMatch) => {
-                    if (err) return res.status(500).json({ success: false, message: err.message });
+            const newUser = await User.create({
+                name,
+                email,
+                password: hashedPassword
+            });
 
-                    if (isMatch) {
-                        res.json({ success: true, message: 'Login successful', user: { name: user.name, email: user.email } });
-                    } else {
-                        res.status(400).json({ success: false, message: 'Incorrect password' });
-                    }
-                });
+            return res.status(201).json({
+                success: true,
+                isNewUser: true,
+                message: "User created",
+                user: {
+                    id: newUser._id,
+                    name: newUser.name,
+                    email: newUser.email
+                }
+            });
+        }
+
+        // LOGIN (IF USER EXISTS)
+        const isMatch = await bcrypt.compare(password, user.password);
+
+        if (!isMatch) {
+            return res.status(400).json({
+                success: false,
+                message: "Incorrect password"
+            });
+        }
+
+        return res.json({
+            success: true,
+            isNewUser: false,
+            message: "Login successful",
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email
             }
-        })
-        .catch(err => res.status(500).json({ success: false, message: err.message }));
+        });
+
+    } catch (err) {
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
+    }
 });
 
-
-router.put('/update', (req, res) => {
-    /*  .then(user)=>{
- 
-     } */
-})
-
-
 module.exports = router;
-
